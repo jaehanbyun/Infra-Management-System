@@ -3,6 +3,10 @@ data "openstack_networking_network_v2" "k8s_network" {
   name = "${var.pool}"
 }
 
+data "openstack_networking_subnet_v2" "floating_subnet" {
+  name = "${var.floating_subnet_name}"
+}
+
 resource "openstack_networking_network_v2" "k8s_network" {
   name           = "k8s_network"
   admin_state_up = "true"
