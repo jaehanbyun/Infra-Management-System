@@ -10,7 +10,7 @@ resource "openstack_compute_instance_v2" "bastion" {
     volume_size           = 15
     boot_index            = 0
     destination_type      = "volume"
-    delete_on_termination = false
+    delete_on_termination = true
   }
 
   network {
@@ -40,7 +40,7 @@ resource "openstack_compute_instance_v2" "masters" {
     volume_size           = 10
     boot_index            = 0
     destination_type      = "volume"
-    delete_on_termination = false
+    delete_on_termination = true
   }
 
   network {
@@ -63,7 +63,7 @@ resource "openstack_compute_instance_v2" "workers" {
     volume_size           = 20
     boot_index            = 0
     destination_type      = "volume"
-    delete_on_termination = false
+    delete_on_termination = true
   }
 
   network {
