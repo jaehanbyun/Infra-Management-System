@@ -1,13 +1,13 @@
 output "k8s_network_id" {
-  value = "${openstack_networking_network_v2.k8s_network.id}"
+  value = openstack_networking_network_v2.k8s_network.id
 }
 
 output "k8s_subnet_id" {
-  value = "${openstack_networking_subnet_v2.k8s_subnet.id}"
+  value = openstack_networking_subnet_v2.k8s_subnet.id
 }
 
 output "bastion_fips" {
-  value = "${openstack_compute_floatingip_v2.bastion_ip[*].address}"
+  value = openstack_compute_floatingip_v2.bastion_ip[*].address
 }
 
 output "master_ips" {
@@ -17,15 +17,15 @@ output "master_ips" {
 
 output "worker_ips" {
   value = [for i in openstack_compute_instance_v2.workers : i.access_ip_v4]
-  description = "IP Addresses of worekr nodes"
+  description = "IP Addresses of worker nodes"
 }
 
 output "floating_network_id" {
-  value = "${data.openstack_networking_network_v2.k8s_network.id}"
+  value = data.openstack_networking_network_v2.k8s_network.id
 }
 
 output "floating_subnet_id" {
- value = "${data.openstack_networking_subnet_v2.floating_subnet.id}"
+  value = data.openstack_networking_subnet_v2.floating_subnet.id
 }
 
 output "os_username_output" {
@@ -47,3 +47,4 @@ output "os_auth_url_output" {
 output "os_region_name_output" {
   value = var.os_region_name
 }
+
