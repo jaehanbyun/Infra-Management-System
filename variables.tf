@@ -55,7 +55,7 @@ terraform {
     }
   }
   backend "swift" {
-    container = "terraform-state"
+    container = "terraform-${var.backend}-state"
  }
 }
 
@@ -64,5 +64,6 @@ variable "os_project_name" {}
 variable "os_password_input" {}
 variable "os_auth_url" {}
 variable "os_region_name" {}
+variable "backend" {}
 # variable "ssh_key_file" {}
 
