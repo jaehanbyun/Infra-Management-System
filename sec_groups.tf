@@ -85,7 +85,7 @@ resource "openstack_networking_secgroup_rule_v2" "bastion_icmp" {
 
 # Create ssh-key
 resource "openstack_compute_keypair_v2" "terraform" {
-  name       = "terraform"
-  public_key = file("~/.ssh/id_rsa.pub")
+    name       = "terraform"
+    public_key = file(var.public_key_path)
 }
 
