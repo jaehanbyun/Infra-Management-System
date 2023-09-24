@@ -46,6 +46,11 @@ variable "number_of_worker_nodes" {
   default = 1
 }
 
+variable "public_key_path" {
+  description = "Path to the public key"
+  type        = string
+}
+
 terraform {
   required_version = ">= 0.14.0"
   required_providers {
