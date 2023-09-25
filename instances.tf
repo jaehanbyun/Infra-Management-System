@@ -3,6 +3,11 @@ resource "openstack_compute_instance_v2" "bastion" {
   flavor_name     = var.bastion_flavor_name
   key_pair        = openstack_compute_keypair_v2.terraform.name
   security_groups = [openstack_networking_secgroup_v2.bastion_sec_group.name]
+  user_data = <<-EOF
+              #cloud-config
+              runcmd:
+                - [ sudo, apt, update ]
+              EOF
 
   block_device {
     uuid                  = var.bastion_image_uuid
@@ -33,6 +38,11 @@ resource "openstack_compute_instance_v2" "masters" {
   flavor_name     = var.master_flavor_name
   key_pair        = openstack_compute_keypair_v2.terraform.name
   security_groups = [openstack_networking_secgroup_v2.k8s_sec_group.name]
+  user_data = <<-EOF
+              #cloud-config
+              runcmd:
+                - [ sudo, apt, update ]
+              EOF
 
   block_device {
     uuid                  = var.master_image_uuid
@@ -56,6 +66,11 @@ resource "openstack_compute_instance_v2" "workers" {
   flavor_name     = var.worker_flavor_name
   key_pair        = openstack_compute_keypair_v2.terraform.name
   security_groups = [openstack_networking_secgroup_v2.k8s_sec_group.name]
+  user_data = <<-EOF
+              #cloud-config
+              runcmd:
+                - [ sudo, apt, update ]
+              EOF  
 
   block_device {
     uuid                  = var.worker_image_uuid
