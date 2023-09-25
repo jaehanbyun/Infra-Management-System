@@ -1,6 +1,6 @@
 # Create Security Group For k8s Instances
 resource "openstack_networking_secgroup_v2" "k8s_sec_group" {
-  name        = "k8s_sec_group"
+  name        = "k8s_${var.cluster_name}_sec_group"
   description = "Security group for the k8s instances"
 }
 
@@ -59,7 +59,7 @@ resource "openstack_networking_secgroup_rule_v2" "k8s_icmp" {
 
 # Create Security Group For Deployment Instance
 resource "openstack_networking_secgroup_v2" "bastion_sec_group" {
-  name        = "bastion_sec_group"
+  name        = "bastion_${var.cluster_name}_sec_group"
   description = "Security group for the bastion instance"
 }
 

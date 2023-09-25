@@ -8,13 +8,13 @@ data "openstack_networking_subnet_v2" "floating_subnet" {
 }
 
 resource "openstack_networking_network_v2" "k8s_network" {
-  name           = "k8s_network"
+  name           = "k8s_${var.cluster_name}_network"
   admin_state_up = true
 }
 
 # Create Subnet
 resource "openstack_networking_subnet_v2" "k8s_subnet" {
-  name            = "k8s_subnet"
+  name            = "k8s_${var.cluster_name}_subnet"
   network_id      = openstack_networking_network_v2.k8s_network.id
   cidr            = "10.0.0.0/24"
   ip_version      = 4
@@ -23,7 +23,7 @@ resource "openstack_networking_subnet_v2" "k8s_subnet" {
 
 # Create Router
 resource "openstack_networking_router_v2" "k8s_router" {
-  name                = "k8s_router"
+  name                = "k8s_${var.cluster_name}_router"
   admin_state_up      = true
   external_network_id = data.openstack_networking_network_v2.k8s_network.id
 }
