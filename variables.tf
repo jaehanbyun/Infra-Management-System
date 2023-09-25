@@ -62,6 +62,7 @@ terraform {
   backend "swift" {}
 }
 
+variable "cluster_name" {}
 variable "os_username" {}
 variable "os_project_name" {}
 variable "os_password_input" {}

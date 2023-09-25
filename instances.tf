@@ -1,5 +1,5 @@
 resource "openstack_compute_instance_v2" "bastion" {
-  name            = "k8s-bastion"
+  name            = "k8s-${var.cluster_name}-bastion"
   flavor_name     = var.bastion_flavor_name
   key_pair        = openstack_compute_keypair_v2.terraform.name
   security_groups = [openstack_networking_secgroup_v2.bastion_sec_group.name]
@@ -34,7 +34,7 @@ resource "openstack_compute_floatingip_associate_v2" "floatip" {
 
 resource "openstack_compute_instance_v2" "masters" {
   count           = var.number_of_master_nodes
-  name            = "k8s-master${count.index +1}"
+  name            = "k8s-${var.cluster_name}-master${count.index +1}"
   flavor_name     = var.master_flavor_name
   key_pair        = openstack_compute_keypair_v2.terraform.name
   security_groups = [openstack_networking_secgroup_v2.k8s_sec_group.name]
@@ -62,7 +62,7 @@ resource "openstack_compute_instance_v2" "masters" {
 
 resource "openstack_compute_instance_v2" "workers" {
   count           = var.number_of_worker_nodes
-  name            = "k8s-worker${count.index +1}"
+  name            = "k8s-${var.cluster_name}-worker${count.index +1}"
   flavor_name     = var.worker_flavor_name
   key_pair        = openstack_compute_keypair_v2.terraform.name
   security_groups = [openstack_networking_secgroup_v2.k8s_sec_group.name]
