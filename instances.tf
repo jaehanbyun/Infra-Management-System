@@ -3,11 +3,6 @@ resource "openstack_compute_instance_v2" "bastion" {
   flavor_name     = var.bastion_flavor_name
   key_pair        = openstack_compute_keypair_v2.terraform.name
   security_groups = [openstack_networking_secgroup_v2.bastion_sec_group.name]
-  user_data = <<-EOF
-              #cloud-config
-              runcmd:
-                - [ sudo, apt, update ]
-              EOF
 
   block_device {
     uuid                  = var.bastion_image_uuid
