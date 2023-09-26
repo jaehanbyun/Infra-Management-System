@@ -1,9 +1,14 @@
 #!/bin/bash
 
-# Parsing Terraform outputs
-BASTION_IP=$(terraform output bastion_fips | tr -d '[]," \n')
-MASTER_IPS=$(terraform output master_ips | tr -d '[]' | sed 's/\"//g' | tr -d '\n')
-WORKER_IPS=$(terraform output worker_ips | tr -d '[]' | sed 's/\"//g' | tr -d '\n')
+# Ensure we get three arguments
+if [[ $# -ne 3 ]]; then
+  echo "Usage: $0 <BASTION_IP> <MASTER_IPS> <WORKER_IPS>"
+  exit 1
+fi
+
+BASTION_IP=$1
+MASTER_IPS=$2
+WORKER_IPS=$3
 
 # Create inventory.ini file
 echo "[all]" > inventory.ini
@@ -42,8 +47,6 @@ count=1
 IFS=',' read -ra ADDR <<< "$MASTER_IPS"
 for ip in "${ADDR[@]}"; do
   echo "k8s-master${count}" >> inventory.ini
-  ((count++))
-done
 
 echo -e "\n[kube_node]" >> inventory.ini
 count=1
