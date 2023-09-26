@@ -47,6 +47,8 @@ count=1
 IFS=',' read -ra ADDR <<< "$MASTER_IPS"
 for ip in "${ADDR[@]}"; do
   echo "k8s-master${count}" >> inventory.ini
+  ((count++))
+done
 
 echo -e "\n[kube_node]" >> inventory.ini
 count=1
