@@ -10,6 +10,10 @@ output "bastion_fips" {
   value = openstack_compute_floatingip_v2.bastion_ip[*].address
 }
 
+output "bastion_ip" {
+  value = openstack_compute_instance_v2.bastion.access_ip_v4
+}
+
 output "master_ips" {
   value = [for i in openstack_compute_instance_v2.masters : i.access_ip_v4]
   description = "IP Addresses of master nodes"
