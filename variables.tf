@@ -21,15 +21,15 @@ variable "bastion_flavor_name" {
 }
 # Image for master nodes: Ubuntu 20.04
 variable "master_image_uuid" {
-  default = "d28b3dbd-ff9e-4265-9629-4ec9303baa77"
+  default = "b89c985d-ba58-4d97-a2f4-b313cd532628"
 }
 # Image for worker nodes: Ubuntu 20.04
 variable "worker_image_uuid" {
-  default = "d28b3dbd-ff9e-4265-9629-4ec9303baa77"
+  default = "b89c985d-ba58-4d97-a2f4-b313cd532628"
 }
 # Image for bastion nodes: Ubuntu 20.04
 variable "bastion_image_uuid" {
-  default = "d28b3dbd-ff9e-4265-9629-4ec9303baa77"
+  default = "b89c985d-ba58-4d97-a2f4-b313cd532628"
 }
 
 variable "ssh_user_name" {
