@@ -9,15 +9,15 @@ variable "floating_subnet_name" {
 
 # Flavor for master nodes
 variable "master_flavor_name" {
-  default = "k8s"
+  default = "k8s-node"
 }
 # Flavor for worker nodes
 variable "worker_flavor_name" {
-  default = "k8s"
+  default = "k8s-node"
 }
 # Flavor for bastion nodes
 variable "bastion_flavor_name" {
-  default = "k8s"
+  default = "k8s-bastion"
 }
 # Image for master nodes: Ubuntu 20.04
 variable "master_image_uuid" {
