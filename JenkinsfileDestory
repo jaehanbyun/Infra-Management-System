@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'clusterName')
+    }
+
+    environment {
+        OS_CREDENTIALS = credentials('openstack-string-cred')
+    }
+   
+    stages {
+        stage('Setup Environment Variables') {
+            steps {
+                echo "Start environment variable Setup"
+                script {
+                    def parts = OS_CREDENTIALS.split(',')
+                    if (parts.length != 6) {
+                        error "Unexpected number of elements in CREDENTIALS. Expected 5, but got ${parts.length}."
+                    }
+                
+                    env.OS_USERNAME = parts[0]
+                    env.OS_PROJECT_NAME = parts[1]
+                    env.OS_AUTH_URL = parts[2]
+                    env.OS_REGION_NAME = parts[3]
+                    env.OS_PASSWORD = parts[4]
+                    env.OS_USER_DOMAIN_NAME = parts[5]
+                }
+                echo "Environmental variable Setup succeeded!"
+            }
+        }
+
+        stage('Terraform Init and Destroy') {
+            steps {
+                script {
+                    sh """
+                    git clone https://github.com/Cloud-Chain/infra-repo.git -b terraform ${params.clusterName}-delete
+                    terraform init -backend-config="container=terraform-${params.clusterName}-tfstate" ${params.clusterName}-delete/delete
+                    terraform destroy --auto-approve ${params.clusterName}-delete/delete
+                    """
+                }
+            }
+        }
+    }
+}
