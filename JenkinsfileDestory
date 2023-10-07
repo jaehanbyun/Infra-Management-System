@@ -41,5 +41,14 @@ pipeline {
                 }
             }
         }
+
+        stage('Delete Terraform State File using Go Server API') {
+            steps {
+                def goServerURL = "http://192.168.10.20:5000"
+                sh"""
+                curl -X DELETE "$goServerURL/terraform/statefile/delete?clusterName=${params.clusterName}"
+                """
+            }
+        }
     }
 }
