@@ -7,29 +7,22 @@ variable "floating_subnet_name" {
   default = "public-subnet"
 }
 
-# Flavor for master nodes
-variable "master_flavor_name" {
-  default = "k8s-node"
+variable "node_image_uuid" {
+  default = "c586196e-c122-4541-90f6-60c49b9f91c6"
 }
-# Flavor for worker nodes
-variable "worker_flavor_name" {
-  default = "k8s-node"
+
+variable "flavor_vcpu" {
+  default = "5"
 }
-# Flavor for bastion nodes
-variable "bastion_flavor_name" {
-  default = "k8s-bastion"
+
+variable "flavor_ram" {
+  type    = number
+  default = 4096
 }
-# Image for master nodes: Ubuntu 20.04
-variable "master_image_uuid" {
-  default = "d65a9810-a5b3-426b-9900-e8b326dc3dca"
-}
-# Image for worker nodes: Ubuntu 20.04
-variable "worker_image_uuid" {
-  default = "d65a9810-a5b3-426b-9900-e8b326dc3dca"
-}
-# Image for bastion nodes: Ubuntu 20.04
-variable "bastion_image_uuid" {
-  default = "d65a9810-a5b3-426b-9900-e8b326dc3dca"
+
+variable "flavor_disk" {
+  type    = number
+  default = 40
 }
 
 variable "ssh_user_name" {
@@ -68,5 +61,16 @@ variable "os_project_name" {}
 variable "os_password_input" {}
 variable "os_auth_url" {}
 variable "os_region_name" {}
-# variable "ssh_key_file" {}
 
+# Image for master nodes: Ubuntu 20.04
+# variable "master_image_uuid" {
+#   default = "d65a9810-a5b3-426b-9900-e8b326dc3dca"
+# }
+# # Image for worker nodes: Ubuntu 20.04
+# variable "worker_image_uuid" {
+#   default = "d65a9810-a5b3-426b-9900-e8b326dc3dca"
+# }
+# # Image for bastion nodes: Ubuntu 20.04
+# variable "bastion_image_uuid" {
+#   default = "d65a9810-a5b3-426b-9900-e8b326dc3dca"
+# }
