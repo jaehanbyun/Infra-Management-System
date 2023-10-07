@@ -1,8 +1,9 @@
 resource "openstack_compute_flavor_v2" "k8s_flavor" {
-  name  = "k8s-${var.cluster_name}-flavor"
-  ram   = var.flavor_ram
-  vcpus = var.flavor_vcpu
-  disk  = var.flavor_disk
+  name      = "k8s-${var.cluster_name}-flavor"
+  ram       = var.flavor_ram
+  vcpus     = var.flavor_vcpu
+  disk      = var.flavor_disk
+  is_public = true
 }
 
 resource "openstack_compute_instance_v2" "bastion" {
