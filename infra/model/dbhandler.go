@@ -33,15 +33,15 @@ func (p *postgresHandler) Close() {
 	p.db.Close()
 }
 
-func (h *postgresHandler) GetClusterCount() (int, error) {
-	row := h.db.QueryRow("SELECT COUNT(*) FROM clusters")
+func (p *postgresHandler) GetClusterCount() (int, error) {
+	row := p.db.QueryRow("SELECT COUNT(*) FROM clusters")
 	var count int
 	err := row.Scan(&count)
 	return count, err
 }
 
-func (h *postgresHandler) AddCluster(cluster data.ClusterSpec) {
-	_, err := h.db.Exec(`INSERT INTO clusters(cluster_name, worker_count, master_count, node_image, flavor_vcpu, flavor_ram, flavor_disk) 
+func (p *postgresHandler) AddCluster(cluster data.ClusterSpec) {
+	_, err := p.db.Exec(`INSERT INTO clusters(cluster_name, worker_count, master_count, node_image, flavor_vcpu, flavor_ram, flavor_disk) 
 	VALUES($1, $2, $3, $4, $5, $6, $7)`,
 		cluster.ClusterName, cluster.WorkerCount, cluster.MasterCount, cluster.NodeImage, cluster.FlavorVcpu, cluster.FlavorRam, cluster.FlavorDisk)
 	if err != nil {
@@ -49,8 +49,17 @@ func (h *postgresHandler) AddCluster(cluster data.ClusterSpec) {
 	}
 }
 
-func (h *postgresHandler) GetClusterSpec(clusterName string) (*data.ClusterSpec, error) {
-	row := h.db.QueryRow(`SELECT cluster_name, worker_count, master_count, node_image, flavor_vcpu, flavor_ram, flavor_disk 
+func (p *postgresHandler) DeleteCluster(clusterName string) error {
+	_, err := p.db.Exec(`DELETE FROM clusters WHERE cluster_name = $1`, clusterName)
+	if err != nil {
+		log.Printf("Failed to delete the cluster with name: %s, Error: %v", clusterName, err)
+		return err
+	}
+	return nil
+}
+
+func (p *postgresHandler) GetClusterSpec(clusterName string) (*data.ClusterSpec, error) {
+	row := p.db.QueryRow(`SELECT cluster_name, worker_count, master_count, node_image, flavor_vcpu, flavor_ram, flavor_disk 
 	FROM clusters WHERE cluster_name = $1`, clusterName)
 
 	var cluster data.ClusterSpec

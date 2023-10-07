@@ -162,6 +162,24 @@ func (a *AppHandler) createCluster(w http.ResponseWriter, r *http.Request) {
 	rd.JSON(w, http.StatusCreated, map[string]string{"message": "Cluster created successfully!"})
 }
 
+func (a *AppHandler) deleteCluster(w http.ResponseWriter, r *http.Request) {
+	clusterName := data.DeleteClusterReq{
+		ClusterName: r.URL.Query().Get("clusterName"),
+	}
+
+	if clusterName.ClusterName == "" {
+		http.Error(w, "Cluster name is required", http.StatusBadRequest)
+		return
+	}
+
+	params := structToMap(clusterName)
+	triggerJenkinsJob("deleteCluster", params)
+
+	// a.db.DeleteCluster(clusterName)
+
+	rd.JSON(w, http.StatusCreated, map[string]string{"message": "Cluster deleted successfully!"})
+}
+
 func (a *AppHandler) getClusterCount(w http.ResponseWriter, r *http.Request) {
 	count, err := a.db.GetClusterCount()
 	if err != nil {
@@ -243,6 +261,7 @@ func MakeHandler() *AppHandler {
 	r.HandleFunc("/cluster/count", a.getClusterCount).Methods("GET")
 	r.HandleFunc("/cluster/spec", a.getClusterSpec).Methods("GET")
 	r.HandleFunc("/cluster/create", a.createCluster).Methods("POST")
+	r.HandleFunc("/cluster/delete", a.deleteCluster).Methods("DELETE")
 	r.HandleFunc("/terraform/statefile/delete", a.deleteTerraformStatefile).Methods("DELETE")
 
 	return a

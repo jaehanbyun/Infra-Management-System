@@ -20,3 +20,7 @@ type ClusterSpec struct {
 	MasterCount int    `json:"masterCount"`
 	WorkerCount int    `json:"workerCount"`
 }
+
+type DeleteClusterReq struct {
+	ClusterName string `json:"clusterName"`
+}
