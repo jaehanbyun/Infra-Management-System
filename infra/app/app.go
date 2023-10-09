@@ -245,6 +245,24 @@ func (a *AppHandler) getAllClusters(w http.ResponseWriter, r *http.Request) {
 	rd.JSON(w, http.StatusOK, clusters)
 }
 
+func (a *AppHandler) jenkinsCompletionNotify(w http.ResponseWriter, r *http.Request) {
+	var notif data.JenkinsCompletionNotification
+
+	err := json.NewDecoder(r.Body).Decode(&notif)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to decode Jenkins completion notification: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	err = a.db.UpdateClusterStatusAndIP(notif.ClusterName, "Active", notif.BastionIP)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error updating cluster status: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	rd.JSON(w, http.StatusOK, map[string]string{"message": "Cluster updated successfully!"})
+}
+
 func MakeHandler() *AppHandler {
 	rd = render.New()
 	r := mux.NewRouter()
@@ -270,6 +288,7 @@ func MakeHandler() *AppHandler {
 	r.HandleFunc("/cluster/spec", a.getClusterSpec).Methods("GET")
 	r.HandleFunc("/cluster/create", a.createCluster).Methods("POST", "OPTIONS")
 	r.HandleFunc("/cluster/delete", a.deleteCluster).Methods("DELETE", "OPTIONS")
+	r.HandleFunc("/jenkins/notify-completion", a.jenkinsCompletionNotify).Methods("POST")
 
 	return a
 }
