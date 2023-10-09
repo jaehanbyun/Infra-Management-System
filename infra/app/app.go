@@ -13,6 +13,8 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
+	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
+	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
 	"github.com/gorilla/mux"
 	"github.com/jaehanbyun/infra/data"
 	"github.com/jaehanbyun/infra/model"
@@ -263,6 +265,55 @@ func (a *AppHandler) jenkinsCompletionNotify(w http.ResponseWriter, r *http.Requ
 	rd.JSON(w, http.StatusOK, map[string]string{"message": "Cluster updated successfully!"})
 }
 
+func (a *AppHandler) deleteTerraformStatefile(w http.ResponseWriter, r *http.Request) {
+	authOpts := getAuthOpts()
+	clusterName := "terraform-" + r.URL.Query().Get("clusterName") + "-tfstate"
+	if clusterName == "" {
+		http.Error(w, "Cluster name is required", http.StatusBadRequest)
+		return
+	}
+
+	provider, err := openstack.AuthenticatedClient(authOpts)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error setting authentication: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	objectStoreClient, err := openstack.NewObjectStorageV1(provider, gophercloud.EndpointOpts{Region: os.Getenv("OS_REGION_NAME")})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error creating object storage client: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	objectList, err := objects.List(objectStoreClient, clusterName, nil).AllPages()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error listing objects in container: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	objectNames, err := objects.ExtractNames(objectList)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error extracting object names: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	for _, objectName := range objectNames {
+		_, err := objects.Delete(objectStoreClient, clusterName, objectName, nil).Extract()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error deleting object %s: %v", objectName, err), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	_, err = containers.Delete(objectStoreClient, clusterName).Extract()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error deleting container: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	rd.JSON(w, http.StatusOK, map[string]string{"message": "Container deleted successfully!"})
+}
+
 func MakeHandler() *AppHandler {
 	rd = render.New()
 	r := mux.NewRouter()
@@ -289,6 +340,7 @@ func MakeHandler() *AppHandler {
 	r.HandleFunc("/cluster/create", a.createCluster).Methods("POST", "OPTIONS")
 	r.HandleFunc("/cluster/delete", a.deleteCluster).Methods("DELETE", "OPTIONS")
 	r.HandleFunc("/jenkins/notify-completion", a.jenkinsCompletionNotify).Methods("POST")
+	r.HandleFunc("/terraform/statefile/delete", a.deleteTerraformStatefile).Methods("DELETE", "OPTIONS")
 
 	return a
 }
