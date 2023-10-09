@@ -13,14 +13,26 @@ type QuotaUsage struct {
 
 type ClusterSpec struct {
 	ClusterName string `json:"clusterName"`
+	WorkerCount int    `json:"workerCount"`
+	MasterCount int    `json:"masterCount"`
 	NodeImage   string `json:"nodeImage"`
 	FlavorVcpu  int    `json:"flavorVcpu"`
 	FlavorRam   int    `json:"flavorRam"`
 	FlavorDisk  int    `json:"flavorDisk"`
-	MasterCount int    `json:"masterCount"`
-	WorkerCount int    `json:"workerCount"`
+	Status      string `json:"status,omitempty"`
+	BastionIP   string `json:"bastionIP,omitempty"`
 }
 
 type DeleteClusterReq struct {
 	ClusterName string `json:"clusterName"`
+}
+
+type ImageInfo struct {
+	Name string `json:"name"`
+	UUID string `json:"uuid"`
+}
+
+type JenkinsCompletionNotification struct {
+	ClusterName string `json:"clusterName"`
+	BastionIP   string `json:"bastionIP"`
 }
