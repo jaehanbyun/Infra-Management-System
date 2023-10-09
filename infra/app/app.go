@@ -12,8 +12,7 @@ import (
 	computequotasets "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/quotasets"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
-	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
+	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
 	"github.com/gorilla/mux"
 	"github.com/jaehanbyun/infra/data"
 	"github.com/jaehanbyun/infra/model"
@@ -38,17 +37,18 @@ type AppHandler struct {
 
 func enableCORS(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://*")
+		w.Header().Set("Access-Control-Allow-Origin", "http://192.168.10.20:3000")
+		w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Allow", "*")
 
 		if r.Method == "OPTIONS" {
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, X-CSRF-Token ,Authorization")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-
+			w.WriteHeader(http.StatusOK)
 			return
-		} else {
-			h.ServeHTTP(w, r)
 		}
+
+		h.ServeHTTP(w, r)
 	})
 }
 
@@ -163,19 +163,19 @@ func (a *AppHandler) createCluster(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *AppHandler) deleteCluster(w http.ResponseWriter, r *http.Request) {
-	clusterName := data.DeleteClusterReq{
+	deleteClusterReq := data.DeleteClusterReq{
 		ClusterName: r.URL.Query().Get("clusterName"),
 	}
 
-	if clusterName.ClusterName == "" {
+	if deleteClusterReq.ClusterName == "" {
 		http.Error(w, "Cluster name is required", http.StatusBadRequest)
 		return
 	}
 
-	params := structToMap(clusterName)
+	params := structToMap(deleteClusterReq)
 	triggerJenkinsJob("deleteCluster", params)
 
-	// a.db.DeleteCluster(clusterName)
+	a.db.DeleteCluster(deleteClusterReq.ClusterName)
 
 	rd.JSON(w, http.StatusCreated, map[string]string{"message": "Cluster deleted successfully!"})
 }
@@ -190,13 +190,8 @@ func (a *AppHandler) getClusterCount(w http.ResponseWriter, r *http.Request) {
 	rd.JSON(w, http.StatusOK, map[string]int{"count": count})
 }
 
-func (a *AppHandler) deleteTerraformStatefile(w http.ResponseWriter, r *http.Request) {
+func (a *AppHandler) getImageInfo(w http.ResponseWriter, r *http.Request) {
 	authOpts := getAuthOpts()
-	clusterName := "terraform-" + r.URL.Query().Get("clusterName") + "-tfstate"
-	if clusterName == "" {
-		http.Error(w, "Cluster name is required", http.StatusBadRequest)
-		return
-	}
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
@@ -204,39 +199,35 @@ func (a *AppHandler) deleteTerraformStatefile(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	objectStoreClient, err := openstack.NewObjectStorageV1(provider, gophercloud.EndpointOpts{Region: os.Getenv("OS_REGION_NAME")})
+	opts := gophercloud.EndpointOpts{Region: os.Getenv("OS_REGION_NAME")}
+	imageClient, err := openstack.NewImageServiceV2(provider, opts)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error creating object storage client: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("error setting image client: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	objectList, err := objects.List(objectStoreClient, clusterName, nil).AllPages()
+	allPages, err := images.List(imageClient, images.ListOpts{}).AllPages()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error listing objects in container: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("error listing images: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	objectNames, err := objects.ExtractNames(objectList)
+	allImages, err := images.ExtractImages(allPages)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("error extracting object names: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("error extracting images: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	for _, objectName := range objectNames {
-		_, err := objects.Delete(objectStoreClient, clusterName, objectName, nil).Extract()
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error deleting object %s: %v", objectName, err), http.StatusInternalServerError)
-			return
+	var imageInfos []data.ImageInfo
+	for _, img := range allImages {
+		info := data.ImageInfo{
+			Name: img.Name,
+			UUID: img.ID,
 		}
+		imageInfos = append(imageInfos, info)
 	}
 
-	_, err = containers.Delete(objectStoreClient, clusterName).Extract()
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error deleting container: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	rd.JSON(w, http.StatusOK, map[string]string{"message": "Container deleted successfully!"})
+	rd.JSON(w, http.StatusOK, imageInfos)
 }
 
 func MakeHandler() *AppHandler {
@@ -258,11 +249,11 @@ func MakeHandler() *AppHandler {
 	}
 
 	r.HandleFunc("/quota/usage", a.getQuotaUsage).Methods("GET")
+	r.HandleFunc("/images", a.getImageInfo).Methods("GET")
 	r.HandleFunc("/cluster/count", a.getClusterCount).Methods("GET")
 	r.HandleFunc("/cluster/spec", a.getClusterSpec).Methods("GET")
-	r.HandleFunc("/cluster/create", a.createCluster).Methods("POST")
-	r.HandleFunc("/cluster/delete", a.deleteCluster).Methods("DELETE")
-	r.HandleFunc("/terraform/statefile/delete", a.deleteTerraformStatefile).Methods("DELETE")
+	r.HandleFunc("/cluster/create", a.createCluster).Methods("POST", "OPTIONS")
+	r.HandleFunc("/cluster/delete", a.deleteCluster).Methods("DELETE", "OPTIONS")
 
 	return a
 }
