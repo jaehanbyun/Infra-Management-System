@@ -1,0 +1,286 @@
+def BASTION_FIP = ""
+def MASTER_IP= ""
+
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'clusterName', defaultValue: 'test')
+        string(name: 'nodeImage', defaultValue: 'c586196e-c122-4541-90f6-60c49b9f91c6')
+        string(name: 'flavorVcpu', defaultValue: '5')
+        string(name: 'flavorRam', defaultValue: '4096')
+        string(name: 'flavorDisk', defaultValue: '40')
+        string(name: 'masterCount', defaultValue: '1')
+        string(name: 'workerCount', defaultValue: '1')
+    }
+
+    environment {
+        OS_CREDENTIALS = credentials('openstack-string-cred')
+        SSH_PUBLIC_KEY = credentials('jenkins-ssh-public-key-cred')
+    }
+   
+    stages {
+        stage('Setup Environment Variables') {
+            steps {
+                echo "Start environment variable Setup"
+                script {
+                    def parts = OS_CREDENTIALS.split(',')
+                    if (parts.length != 6) {
+                        error "Unexpected number of elements in CREDENTIALS. Expected 5, but got ${parts.length}."
+                    }
+                
+                    env.OS_USERNAME = parts[0]
+                    env.OS_PROJECT_NAME = parts[1]
+                    env.OS_AUTH_URL = parts[2]
+                    env.OS_REGION_NAME = parts[3]
+                    env.OS_PASSWORD = parts[4]
+                    env.OS_USER_DOMAIN_NAME = parts[5]
+                    env.SSH_PUBLIC_KEY_CONTENT = SSH_PUBLIC_KEY
+                }
+
+                echo "Environmental variable Setup succeeded!"
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                script {
+                    sh """
+                    git clone https://github.com/Cloud-Chain/infra-repo.git -b terraform ${params.clusterName}
+                    echo "$SSH_PUBLIC_KEY_CONTENT" > ${params.clusterName}/create/public_key.pub
+                    terraform init -backend-config="container=terraform-${params.clusterName}-tfstate" ${params.clusterName}/create/
+                    """
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                script {
+                    sh """
+                    terraform apply \\
+                        -var 'number_of_worker_nodes=${params.workerCount}' \\
+                        -var 'number_of_master_nodes=${params.masterCount}' \\
+                        -var 'node_image_uuid=${params.nodeImage}' \\
+                        -var 'flavor_vcpu=${params.flavorVcpu}' \\
+                        -var 'flavor_ram=${params.flavorRam}' \\
+                        -var 'flavor_disk=${params.flavorDisk}' \\
+                        -var 'cluster_name=${params.clusterName}' \\
+                        -var 'public_key_path=${params.clusterName}/create/public_key.pub' --auto-approve ${params.clusterName}/create
+                    """
+                }
+            }
+        }
+
+        stage('Setup Kubespray On Bastion') {
+            steps {
+                script {
+                    def master_ips
+                    def worker_ips
+                    def floating_network_id
+                    def floating_subnet_id
+                    def k8s_network_id
+                    def k8s_subnet_id
+
+                    dir("${params.clusterName}/create") {
+                        sh """
+                        terraform init -backend-config="container=terraform-${params.clusterName}-tfstate"
+                        """
+                        
+                        BASTION_FIP = sh(script: 'terraform output bastion_fips | tr -d \'[],"\\n\'', returnStdout: true).trim()
+                        MASTER_IP = sh(script: "terraform output master_ips | tr -d '[]' | sed 's/\"//g' | tr -d '\\n' | cut -d ',' -f 1", returnStdout: true).trim()
+                        bastion_ip = sh(script: "terraform output bastion_ip | tr -d '\"'", returnStdout: true).trim()
+                        master_ips = sh(script: "terraform output master_ips | tr -d '[] ' | sed 's/\"//g' | tr -d '\\n'", returnStdout: true).trim()
+                        worker_ips = sh(script: "terraform output worker_ips | tr -d '[] ' | sed 's/\"//g' | tr -d '\\n'", returnStdout: true).trim()
+                        floating_network_id = sh(script: 'terraform output floating_network_id | tr -d \'"\n\'', returnStdout: true).trim()
+                        floating_subnet_id = sh(script: 'terraform output floating_subnet_id | tr -d \'"\n\'', returnStdout: true).trim()
+                        k8s_network_id = sh(script: 'terraform output k8s_network_id | tr -d \'"\n\'', returnStdout: true).trim()
+                        k8s_subnet_id = sh(script: 'terraform output k8s_subnet_id | tr -d \'"\n\'', returnStdout: true).trim()
+                        
+                        // bastion이 SSH에 응답할 준비가 될 때까지 대기
+                        sh """
+                        count=0
+                        while ! nc -z -v -w5 $BASTION_FIP 22 2>/dev/null; do
+                            count=\$((count + 1))
+                            if [[ \${count} -eq 15 ]]; then
+                                echo "bastion SSH service에 연결 실패"
+                                exit 1
+                            fi
+                            echo "bastion SSH service가 동작하기를 기다리는 중"
+                            sleep 20
+                        done
+                        """
+                        sh"""
+                        curl -X POST http://192.168.10.20:5000/jenkins/notify-completion \\
+                            -H "Content-Type: application/json" \\
+                            -d '{"clusterName": "${params.clusterName}", "bastionIP": "$BASTION_FIP"}'
+                        """
+                        
+                    }   
+
+                    withCredentials([file(credentialsId: 'jenkins-ssh-private-key-file', variable: 'SSH_PRIVATE_KEY')]) {
+                        sshagent(["ssh-key"]) {
+                            sh """
+                            scp -o StrictHostKeyChecking=no $SSH_PRIVATE_KEY ubuntu@${BASTION_FIP}:~/.ssh/id_rsa
+                            ssh -o StrictHostKeyChecking=no ubuntu@${BASTION_FIP} ' \
+                                chmod 600 ~/.ssh/id_rsa; \
+                                export OS_USERNAME=${env.OS_USERNAME}; \
+                                export OS_PROJECT_NAME=${env.OS_PROJECT_NAME}; \
+                                export OS_AUTH_URL=${env.OS_AUTH_URL}; \
+                                export OS_REGION_NAME=${env.OS_REGION_NAME}; \
+                                export OS_PASSWORD=${env.OS_PASSWORD}; \
+                                export OS_USER_DOMAIN_NAME=${env.OS_USER_DOMAIN_NAME}; \
+                                sudo DEBIAN_FRONTEND=noninteractive apt-get update; \
+                                sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip; \
+                                git clone https://github.com/Cloud-Chain/infra-repo.git -b kubespray kubespray; \
+                                cd kubespray; \
+                                cp -rfp inventory/sample inventory/${params.clusterName}; \
+                                sed -i "s|# external_openstack_lbaas_enabled: true|external_openstack_lbaas_enabled: true|" inventory/${params.clusterName}/group_vars/all/openstack.yml; \
+                                sed -i "s|# external_openstack_lbaas_floating_network_id: \\"Neutron network ID to get floating IP from\\"|external_openstack_lbaas_floating_network_id: \\"${floating_network_id}\\"|" inventory/${params.clusterName}/group_vars/all/openstack.yml; \
+                                sed -i "s|# external_openstack_lbaas_floating_subnet_id: \\"Neutron subnet ID to get floating IP from\\"|external_openstack_lbaas_floating_subnet_id: \\"${floating_subnet_id}\\"|" inventory/${params.clusterName}/group_vars/all/openstack.yml; \
+                                sed -i "s|# external_openstack_lbaas_subnet_id: \\"Neutron subnet ID to create LBaaS VIP\\"|external_openstack_lbaas_subnet_id: \\"${k8s_subnet_id}\\"|" inventory/${params.clusterName}/group_vars/all/openstack.yml; \
+                                sed -i "s|# external_openstack_lbaas_network_id: \\"Neutron network ID to create LBaaS VIP\\"|external_openstack_lbaas_network_id: \\"${k8s_network_id}\\"|" inventory/${params.clusterName}/group_vars/all/openstack.yml; \
+                                cd inventory/${params.clusterName}; \
+                                chmod +x update-kubespray-inventory.sh; \
+                                ./update-kubespray-inventory.sh ${params.clusterName} ${bastion_ip} ${master_ips} ${worker_ips}; \
+                                cd ../../; \
+                                /usr/bin/pip install -r requirements.txt; \
+                                ~/.local/bin/ansible-playbook -i inventory/${params.clusterName}/inventory.ini --become --become-user=root -e ansible_ssh_timeout=60 cluster.yml;'
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Setup Kubectl on Bastion and Configure Cluster Access') {
+            steps {
+                script {
+                    sshagent(["ssh-key"]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@$BASTION_FIP ' \
+                            curl -LO "https://dl.k8s.io/release/\$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"; \
+                            sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl; \
+                            ssh ubuntu@${MASTER_IP} sudo cat /etc/kubernetes/ssl/apiserver-kubelet-client.key > client.key; \
+                            ssh ubuntu@${MASTER_IP} sudo cat /etc/kubernetes/ssl/apiserver-kubelet-client.crt > client.crt; \
+                            ssh ubuntu@${MASTER_IP} sudo cat /etc/kubernetes/ssl/ca.crt > ca.crt; \
+                            kubectl config set-cluster default-cluster --server=https://${MASTER_IP}:6443 --certificate-authority=ca.crt --embed-certs=true; \
+                            kubectl config set-credentials default-admin --certificate-authority=ca.crt --client-key=client.key --client-certificate=client.crt --embed-certs=true; \
+                            kubectl config set-context default-context --cluster=default-cluster --user=default-admin; \
+                            kubectl config use-context default-context;'
+                        """
+                        }
+                }
+            }
+        }
+
+        stage('Install Node Exporter on All Nodes') {
+            steps {
+                script {
+                    def allNodes = (master_ips + "," + worker_ips).split(",")
+                    allNodes = allNodes.findAll { node -> node != "" } 
+                        sshagent(["ssh-key"]) {
+                            allNodes.each { node ->
+                                sh """
+                                ssh -o StrictHostKeyChecking=no ubuntu@$BASTION_FIP "
+                                    ssh -o StrictHostKeyChecking=no ubuntu@${node} '
+                                        // Install Prometheus
+                                        wget https://github.com/prometheus/node_exporter/releases/download/v1.2.2/node_exporter-1.2.2.linux-amd64.tar.gz
+                                        tar xvzf node_exporter-1.2.2.linux-amd64.tar.gz
+                                        sudo cp node_exporter-1.2.2.linux-amd64/node_exporter /usr/local/bin/
+
+                                        cat <<EOF | sudo tee /etc/systemd/system/node_exporter.service
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+EOF
+                                        
+                                        sudo systemctl daemon-reload
+                                        sudo systemctl enable node_exporter
+                                        sudo systemctl start node_exporter'
+                                    "
+                                """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Setup Prometheus & Grafana on Bastion Node') {
+            steps {
+                script {
+                    def formattedMasterIps = master_ips ? master_ips.split(',').collect { it + ":9100" }.join(',') : ""
+                    def formattedWorkerIps = worker_ips ? worker_ips.split(',').collect { it + ":9100" }.join(',') : ""
+
+                    def allIps = []
+                    if (formattedMasterIps) allIps.add(formattedMasterIps)
+                    if (formattedWorkerIps) allIps.add(formattedWorkerIps)
+                    def finalIps = allIps.join(',')
+
+                    sshagent(["ssh-key"]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@$BASTION_FIP '
+                            // Install Prometheus
+                            wget https://github.com/prometheus/prometheus/releases/download/v2.30.3/prometheus-2.30.3.linux-amd64.tar.gz
+                            tar xvzf prometheus-2.30.3.linux-amd64.tar.gz
+                            sudo cp prometheus-2.30.3.linux-amd64/prometheus /usr/local/bin/
+                            sudo cp prometheus-2.30.3.linux-amd64/promtool /usr/local/bin/
+                            sudo mkdir /etc/prometheus
+                            sudo cp -r prometheus-2.30.3.linux-amd64/consoles /etc/prometheus
+                            sudo cp -r prometheus-2.30.3.linux-amd64/console_libraries /etc/prometheus
+
+                            cat <<EOF | sudo tee /etc/prometheus/prometheus.yml
+global:
+    scrape_interval: 15s
+
+scrape_configs:
+    - job_name: '\''node'\''
+      static_configs:
+      - targets: ['${finalIps}']
+EOF
+                            cat <<EOF | sudo tee /etc/systemd/system/prometheus.service
+[Unit]
+Description=Prometheus Server
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/prometheus --config.file /etc/prometheus/prometheus.yml --storage.tsdb.path /var/lib/prometheus/
+
+[Install]
+WantedBy=multi-user.target
+EOF
+                            sudo systemctl daemon-reload
+                            sudo systemctl enable prometheus
+                            sudo systemctl start prometheus
+
+                            // Install Grafana
+                            sudo DEBIAN_FRONTEND=noninteractiv apt-get install -y apt-transport-https
+                            sudo DEBIAN_FRONTEND=noninteractiv apt-get install -y software-properties-common wget
+                            wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+                            echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+                            sudo DEBIAN_FRONTEND=noninteractive apt update
+                            sudo DEBIAN_FRONTEND=noninteractive apt install -y grafana
+                            sudo systemctl enable grafana-server
+                            sudo systemctl start grafana-server
+                        '
+                        """
+
+                        sh """
+                        curl -X POST http://192.168.10.20:5000/jenkins/notify-completion \\
+                            -H "Content-Type: application/json" \\
+                            -d '{"clusterName": "${params.clusterName}", "bastionIP": "$BASTION_FIP"}'
+                        """
+                    }
+                }
+            }
+        }
+    }
+}
