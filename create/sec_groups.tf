@@ -83,9 +83,19 @@ resource "openstack_networking_secgroup_rule_v2" "bastion_icmp" {
   security_group_id = openstack_networking_secgroup_v2.bastion_sec_group.id
 }
 
+resource "openstack_networking_secgroup_rule_v2" "bastion_grafana" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = 3000
+  port_range_max    = 3000
+  remote_ip_prefix  = "0.0.0.0/0"
+  security_group_id = openstack_networking_secgroup_v2.bastion_sec_group.id
+}
+
 # Create ssh-key
 resource "openstack_compute_keypair_v2" "terraform" {
-    name       = "terraform-${var.cluster_name}"
-    public_key = file(var.public_key_path)
+  name       = "terraform-${var.cluster_name}"
+  public_key = file(var.public_key_path)
 }
 
