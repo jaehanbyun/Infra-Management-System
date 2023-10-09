@@ -230,6 +230,21 @@ func (a *AppHandler) getImageInfo(w http.ResponseWriter, r *http.Request) {
 	rd.JSON(w, http.StatusOK, imageInfos)
 }
 
+func (a *AppHandler) getAllClusters(w http.ResponseWriter, r *http.Request) {
+	clusters, err := a.db.GetAllClusters()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error retrieving all clusters: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if len(clusters) == 0 {
+		rd.JSON(w, http.StatusNotFound, map[string]string{"message": "No clusters found"})
+		return
+	}
+
+	rd.JSON(w, http.StatusOK, clusters)
+}
+
 func MakeHandler() *AppHandler {
 	rd = render.New()
 	r := mux.NewRouter()
@@ -251,6 +266,7 @@ func MakeHandler() *AppHandler {
 	r.HandleFunc("/quota/usage", a.getQuotaUsage).Methods("GET")
 	r.HandleFunc("/images", a.getImageInfo).Methods("GET")
 	r.HandleFunc("/cluster/count", a.getClusterCount).Methods("GET")
+	r.HandleFunc("/clusters", a.getAllClusters).Methods("GET")
 	r.HandleFunc("/cluster/spec", a.getClusterSpec).Methods("GET")
 	r.HandleFunc("/cluster/create", a.createCluster).Methods("POST", "OPTIONS")
 	r.HandleFunc("/cluster/delete", a.deleteCluster).Methods("DELETE", "OPTIONS")
