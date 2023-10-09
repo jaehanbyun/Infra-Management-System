@@ -1,5 +1,7 @@
-def BASTION_FIP = ""
-def MASTER_IP= ""
+def BASTION_FIP 
+def MASTER_IP
+def master_ips
+def worker_ips
 
 pipeline {
     agent any
@@ -75,10 +77,9 @@ pipeline {
         stage('Setup Kubespray On Bastion') {
             steps {
                 script {
-                    def master_ips
-                    def worker_ips
                     def floating_network_id
                     def floating_subnet_id
+                    def bastion_ip
                     def k8s_network_id
                     def k8s_subnet_id
 
