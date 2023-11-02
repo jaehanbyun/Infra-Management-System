@@ -8,7 +8,7 @@ variable "floating_subnet_name" {
 }
 
 variable "node_image_uuid" {
-  default = "c586196e-c122-4541-90f6-60c49b9f91c6"
+  default = "a186016d-2fa5-4180-be26-a6f0ae1d7733"
 }
 
 variable "flavor_vcpu" {
