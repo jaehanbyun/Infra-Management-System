@@ -24,7 +24,8 @@
 
 #### 클러스터 생성
 ![메인3](https://github.com/Cloud-Chain/infra-repo/assets/80397512/72235e16-09bf-4cd6-b2e7-cd790594e0f6)
-- 사용자는 클러스터의 이름, Master Node와 Worker Node의 수, Node의 Image, Node의 하드웨어 명세(CPU, RAM, Disk)를 입력하고 CREATE 버튼을 누른다. 이후, 인프라 관리 시스템이 입력한 명세를 바탕으로 Jenkins 클러스터 배포 자동화 파이프라인을 통해 클러스터를 생성하게 된니다.
+- 사용자는 클러스터의 이름, Master Node와 Worker Node의 수, Node의 Image, Node의 하드웨어 명세(CPU, RAM, Disk)를 입력하고 CREATE 버튼을 누릅니다.
+- 이후, 인프라 관리 시스템이 입력한 명세를 바탕으로 Jenkins 클러스터 배포 자동화 파이프라인을 통해 클러스터를 생성하게 된니다.
 
 ##### Jenkins 파이프라인 구동 화면 
 ![image](https://github.com/Cloud-Chain/infra-repo/assets/80397512/2b1baae6-b5a3-4cdc-83df-4770a7722170)
@@ -40,7 +41,8 @@ Jenkins 파이프라인의 단계는 다음과 같습니다.
 
 #### 클러스터 모니터링
 ![image](https://github.com/Cloud-Chain/infra-repo/assets/80397512/7347a881-bf66-4678-aa9a-7007359f6231)
-- 모니터링 대시보드 접근 주소를 클릭하면, 해당하는 클러스터 모니터링 대시보드 화면이 나타나게 된다. 클러스터 모니터링 대시보드 화면에서는 각 Node 상태, CPU, Memory, Disk I/O, Network 트래픽 등의 클러스터 운영에 주요한 성능 지표들을 확인할 수 있습니다.
+- 모니터링 대시보드 접근 주소를 클릭하면, 해당하는 클러스터 모니터링 대시보드 화면이 나타나게 됩니다.
+- 클러스터 모니터링 대시보드 화면에서는 각 Node 상태, CPU, Memory, Disk I/O, Network 트래픽 등의 클러스터 운영에 주요한 성능 지표들을 확인할 수 있습니다.
 
 ## :sparkles: Tech Stack
 Kubespray, Terraform, Jenkins, Prometheus, Grafana, Go, React
