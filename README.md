@@ -1,4 +1,4 @@
-<img width="455" alt="image" src="https://github.com/jaehanbyun/Infra-Management-System/assets/80397512/5d917497-c08b-4e92-9f13-0d33a6971ffc"># Infra Repo - CloudChain
+# Infra Repo - CloudChain
 
 <div align="center">
 <img width="150" height="90" alt="스크린샷 2023-10-16 오전 1 38 58" src="https://github.com/Cloud-Chain/infra-repo/assets/80397512/a8c6dfd2-3752-4ad4-8c35-ff58b553434b">
