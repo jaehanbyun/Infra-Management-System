@@ -28,7 +28,7 @@
 <img width="413" alt="image" src="https://github.com/jaehanbyun/Infra-Management-System/assets/80397512/2be12a4f-e4a9-42a6-b1f5-af7ffde39eee">
 
 - 사용자는 클러스터의 이름, Master Node와 Worker Node의 수, Node의 Image, Node의 하드웨어 명세(CPU, RAM, Disk)를 입력하고 CREATE 버튼을 누릅니다.
-- 이후, 인프라 관리 시스템이 입력한 명세를 바탕으로 Jenkins 클러스터 배포 자동화 파이프라인을 통해 클러스터를 생성하게 된니다.
+- 이후, 인프라 관리 시스템이 입력한 명세를 바탕으로 Jenkins 클러스터 배포 자동화 파이프라인을 통해 클러스터를 생성하게 됩니다.
 
 ##### Jenkins 파이프라인 구동 화면 
 <img width="455" alt="image" src="https://github.com/jaehanbyun/Infra-Management-System/assets/80397512/5f536e6b-14c9-41f7-880d-90d7abbaceb0">
